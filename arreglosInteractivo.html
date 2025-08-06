@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aventura de Arreglos: Aprendizaje Interactivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .mission-nav-button.active {
+            background-color: #0f766e; /* teal-700 */
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .mission-nav-button {
+            transition: all 0.2s ease-in-out;
+        }
+        .feedback-correct {
+            color: #16A34A; /* green-600 */
+            font-weight: bold;
+        }
+        .feedback-incorrect {
+            color: #DC2626; /* red-600 */
+            font-weight: bold;
+        }
+        .code-block {
+            background-color: #e5e7eb;
+            border-left: 4px solid #0f766e;
+            padding: 1rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+            border-radius: 0.25rem;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            max-width: 80%;
+        }
+        .assembly-line {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e5e7eb;
+            border-radius: 12px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .assembly-line-station {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 120px;
+            width: 120px;
+            position: relative;
+            z-index: 2;
+        }
+        .conveyor-belt {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: repeating-linear-gradient(-45deg, #a1a1aa, #a1a1aa 10px, #d4d4d8 10px, #d4d4d8 20px);
+            animation: moveConveyor 1s linear infinite;
+            z-index: 1;
+        }
+        @keyframes moveConveyor {
+            from { background-position: 0% 0%; }
+            to { background-position: 100% 0%; }
+        }
+        .car-sprite {
+            position: absolute;
+            font-size: 3rem;
+            transform: translateX(-150%);
+            transition: transform 0.5s ease-in-out;
+            z-index: 3;
+        }
+        .car-sprite.station-0 { transform: translateX(-150%); }
+        .car-sprite.station-1 { transform: translateX(-50%); }
+        .car-sprite.station-2 { transform: translateX(50%); }
+        .car-sprite.station-3 { transform: translateX(150%); }
+        .car-sprite.station-4 { transform: translateX(250%); }
+        .car-sprite.station-5 { transform: translateX(350%); }
+        .car-sprite.station-6 { transform: translateX(450%); }
+        .car-sprite.station-7 { transform: translateX(550%); }
+        .car-sprite.station-8 { transform: translateX(650%); }
+        .car-sprite.station-9 { transform: translateX(750%); }
+        .car-sprite.station-10 { transform: translateX(850%); }
+
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800 antialiased">
+
+    <div id="app" class="min-h-screen flex flex-col">
+
+        <header class="bg-white shadow-md sticky top-0 z-10">
+            <div class="container mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-4">
+                <h1 class="text-2xl md:text-3xl font-bold text-teal-700">🚀 Aventura de Arreglos</h1>
+                <div id="gamification-stats" class="flex items-center space-x-4 text-lg">
+                    <div class="p-2 bg-stone-100 rounded-lg shadow-inner flex items-center gap-2">
+                        <span class="font-bold">Puntos:</span>
+                        <span id="points-display" class="font-bold text-amber-600">0</span> ⭐
+                    </div>
+                    <div class="p-2 bg-stone-100 rounded-lg shadow-inner flex items-center gap-2">
+                        <span class="font-bold">Misiones:</span>
+                        <span id="badges-display" class="font-bold text-amber-600">0</span> / 6 🏆
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <nav class="bg-white/80 backdrop-blur-sm py-3 shadow-sm">
+            <div class="container mx-auto px-4">
+                <div class="flex flex-wrap justify-center gap-2 md:gap-4">
+                    <button data-mission="mission1" class="mission-nav-button px-4 py-2 font-semibold text-stone-700 bg-white rounded-full shadow-sm hover:bg-teal-500 hover:text-white">1. ¿Qué es un Arreglo?</button>
+                    <button data-mission="mission2" class="mission-nav-button px-4 py-2 font-semibold text-stone-700 bg-white rounded-full shadow-sm hover:bg-teal-500 hover:text-white">2. El Poder del Índice</button>
+                    <button data-mission="mission3" class="mission-nav-button px-4 py-2 font-semibold text-stone-700 bg-white rounded-full shadow-sm hover:bg-teal-500 hover:text-white">3. Operaciones Clave</button>
+                    <button data-mission="mission4" class="mission-nav-button px-4 py-2 font-semibold text-stone-700 bg-white rounded-full shadow-sm hover:bg-teal-500 hover:text-white">4. El Recorrido</button>
+                    <button data-mission="mission5" class="mission-nav-button px-4 py-2 font-semibold text-stone-700 bg-white rounded-full shadow-sm hover:bg-teal-500 hover:text-white">5. Proyectos</button>
+                    <button data-mission="mission6" class="mission-nav-button px-4 py-2 font-semibold text-stone-700 bg-white rounded-full shadow-sm hover:bg-teal-500 hover:text-white">6. ¡Cuidado con los Errores!</button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="container mx-auto px-4 py-8 flex-grow">
+            
+            <section id="mission1" class="mission-content">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-3xl font-bold mb-4 text-teal-700">Misión 1: ¿Qué es un Arreglo?</h2>
+                    <p class="mb-4 text-lg text-stone-600">¡Bienvenido, aventurero del código! Tu primera misión es descubrir el secreto de los arreglos. Un arreglo es como una caja mágica que guarda una colección o lista de cosas similares. En lugar de tener muchas variables, ¡puedes tener una sola que guarde todos tus tesoros! Explora las analogías a continuación para entenderlo mejor.</p>
+                    
+                    <h3 class="text-2xl font-semibold mb-4 text-stone-700">🔍 Explora las Analogías</h3>
+                    <div id="analogy-container" class="transition-opacity duration-300">
+                        <!-- Analogies will be injected here by JS -->
+                    </div>
+                    <div class="flex justify-between mt-4">
+                        <button id="prev-analogy" class="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition">Anterior</button>
+                        <button id="next-analogy" class="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition">Siguiente</button>
+                    </div>
+
+                    <div id="mission1-quiz" class="mt-8 pt-4 border-t-2 border-stone-200">
+                        <h3 class="text-2xl font-semibold mb-4 text-stone-700">🤔 Pregunta de Refuerzo</h3>
+                        <p class="mb-4 text-stone-600">¿Cuál de las siguientes opciones describe mejor un arreglo?</p>
+                        <div class="flex flex-col gap-2">
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition">Una sola variable que solo guarda un número.</button>
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition" data-correct="true">Una variable que guarda una lista de elementos.</button>
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition">Una forma de hacer que el código sea más lento.</button>
+                        </div>
+                        <p id="mission1-feedback" class="mt-4 h-6 text-lg font-medium text-center"></p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="mission2" class="mission-content hidden">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-3xl font-bold mb-4 text-teal-700">Misión 2: El Poder del Índice</h2>
+                    <p class="mb-4 text-lg text-stone-600">Cada elemento en un arreglo tiene una posición única llamada <strong>índice</strong>. Aquí está el truco: en programación, ¡casi siempre empezamos a contar desde <strong>cero</strong>! El primer elemento está en el índice 0, el segundo en el índice 1, y así sucesivamente.</p>
+
+                    <h3 class="text-2xl font-semibold mb-4 text-stone-700">🎨 Ejemplo Visual</h3>
+                    <div class="bg-stone-100 p-4 rounded-lg flex flex-col items-center mb-6">
+                        <div class="flex flex-wrap gap-2 justify-center mb-2">
+                            <div class="w-20 h-16 bg-white rounded-lg shadow flex flex-col items-center justify-center text-stone-700 font-semibold"><span>🍎</span><span class="text-xs">Índice 0</span></div>
+                            <div class="w-20 h-16 bg-white rounded-lg shadow flex flex-col items-center justify-center text-stone-700 font-semibold"><span>🍊</span><span class="text-xs">Índice 1</span></div>
+                            <div class="w-20 h-16 bg-white rounded-lg shadow flex flex-col items-center justify-center text-stone-700 font-semibold"><span>🍌</span><span class="text-xs">Índice 2</span></div>
+                            <div class="w-20 h-16 bg-white rounded-lg shadow flex flex-col items-center justify-center text-stone-700 font-semibold"><span>🍇</span><span class="text-xs">Índice 3</span></div>
+                        </div>
+                        <p class="text-sm text-stone-500">Un arreglo de frutas con sus índices.</p>
+                    </div>
+
+                    <h3 class="text-2xl font-semibold mb-4 text-stone-700">🎯 Desafío de los Casilleros</h3>
+                    <p class="mb-4 text-stone-600">Haz clic en el casillero con índice <span class="font-bold text-teal-600" id="target-index"></span> para abrirlo.</p>
+                    <div id="locker-container" class="flex justify-center flex-wrap gap-4 mb-4">
+                        <!-- Lockers will be generated by JS -->
+                    </div>
+                    <p id="locker-feedback" class="h-6 text-lg font-medium text-center"></p>
+
+                    <div id="mission2-quiz" class="mt-8 pt-4 border-t-2 border-stone-200">
+                        <h3 class="text-2xl font-semibold mb-4 text-stone-700">🤔 Pregunta de Refuerzo</h3>
+                        <p class="mb-4 text-stone-600">Si un arreglo tiene 5 elementos, ¿cuál es el índice del último elemento?</p>
+                        <div class="flex flex-col gap-2">
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition">5</button>
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition" data-correct="true">4</button>
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition">1</button>
+                        </div>
+                        <p id="mission2-feedback" class="mt-4 h-6 text-lg font-medium text-center"></p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- MISION 3 REVISADA -->
+            <section id="mission3" class="mission-content hidden">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-3xl font-bold mb-4 text-teal-700">Misión 3: Cocina de Arreglos</h2>
+                    <p class="mb-4 text-lg text-stone-600">¡Bienvenido a la cocina! Tu tarea es preparar un sándwich usando un arreglo como lista de ingredientes. Usa los botones para manipular el arreglo y crear el sándwich perfecto. Esto te enseñará a <strong>añadir</strong>, <strong>quitar</strong> y <strong>cambiar</strong> elementos de un arreglo.</p>
+                    
+                    <h3 class="text-2xl font-semibold mb-4 text-stone-700">🥪 Tu Sándwich de Ingredientes</h3>
+                    <div id="sandwich-visualizer" class="flex items-center flex-wrap gap-2 p-4 bg-stone-100 rounded-lg min-h-[60px] mb-4">
+                        <!-- Sandwich ingredients will be generated by JS -->
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <button id="add-ingredient" class="w-full text-left p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition font-bold">Añadir Ingrediente</button>
+                        <button id="remove-ingredient" class="w-full text-left p-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-bold">Quitar Último Ingrediente</button>
+                        <button id="change-ingredient" class="w-full text-left p-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-bold">Cambiar Ingrediente (índice 1)</button>
+                    </div>
+                    <div id="sandwich-feedback" class="mt-4 p-3 bg-stone-100 rounded-lg min-h-[50px] text-center font-mono">
+                        <!-- Operation feedback -->
+                    </div>
+                    
+                    <div id="mission3-quiz" class="mt-8 pt-4 border-t-2 border-stone-200">
+                        <h3 class="text-2xl font-semibold mb-4 text-stone-700">🤔 Pregunta de Refuerzo</h3>
+                        <p class="mb-4 text-stone-600">Si un arreglo de ingredientes es `['pan', 'queso']`, y le añades 'jamón', ¿cómo se vería?</p>
+                        <div class="flex flex-col gap-2">
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition">`['jamón', 'pan', 'queso']`</button>
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition" data-correct="true">`['pan', 'queso', 'jamón']`</button>
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition">`['pan', 'jamón']`</button>
+                        </div>
+                        <p id="mission3-feedback" class="mt-4 h-6 text-lg font-medium text-center"></p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- MISION 4 REVISADA -->
+            <section id="mission4" class="mission-content hidden">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-3xl font-bold mb-4 text-teal-700">Misión 4: Cadena de Montaje (Bucle)</h2>
+                    <p class="mb-4 text-lg text-stone-600">¡Hora de construir coches! Un bucle es como una cadena de montaje que procesa cada elemento de un arreglo uno por uno. Usa el botón para ver cómo un **bucle** trabaja para construir un coche.</p>
+
+                    <h3 class="text-2xl font-semibold mb-4 text-stone-700">🏭 La Cadena de Montaje</h3>
+                    <div class="assembly-line mb-6">
+                        <div class="conveyor-belt"></div>
+                        <span id="car-sprite" class="car-sprite">🚗</span>
+                        <div class="flex justify-between w-full relative z-20">
+                            <div class="assembly-line-station text-teal-700 text-sm font-semibold">1. Chasis</div>
+                            <div class="assembly-line-station text-teal-700 text-sm font-semibold">2. Motor</div>
+                            <div class="assembly-line-station text-teal-700 text-sm font-semibold">3. Pintura</div>
+                            <div class="assembly-line-station text-teal-700 text-sm font-semibold">4. Ruedas</div>
+                            <div class="assembly-line-station text-teal-700 text-sm font-semibold">5. Listo</div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-4">
+                        <button id="run-loop-btn" class="px-6 py-3 bg-teal-500 text-white font-bold rounded-lg hover:bg-teal-600 transition text-lg">▶️ Iniciar Cadena</button>
+                        <p id="loop-status" class="mt-4 text-lg font-mono h-6"></p>
+                    </div>
+                    
+                    <div id="mission4-quiz" class="mt-8 pt-4 border-t-2 border-stone-200">
+                        <h3 class="text-2xl font-semibold mb-4 text-stone-700">🤔 Pregunta de Refuerzo</h3>
+                        <p class="mb-4 text-stone-600">¿Cuál es el principal beneficio de usar un bucle para trabajar con arreglos?</p>
+                        <div class="flex flex-col gap-2">
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition">Permite escribir más código.</button>
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition" data-correct="true">Permite repetir una acción para cada elemento de forma eficiente.</button>
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition">Hace que los arreglos sean más grandes.</button>
+                        </div>
+                        <p id="mission4-feedback" class="mt-4 h-6 text-lg font-medium text-center"></p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- MISION 5 REVISADA -->
+            <section id="mission5" class="mission-content hidden">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-3xl font-bold mb-4 text-teal-700">Misión 5: Crea tu Personaje</h2>
+                    <p class="mb-4 text-lg text-stone-600">¡Es hora de ser creativo! En los videojuegos, los arreglos se usan para guardar diferentes opciones para un personaje. Usa los arreglos de partes para construir tu propio personaje y ve cómo se combinan.</p>
+
+                    <h3 class="text-2xl font-semibold mb-4 text-stone-700">🕹️ Elige tus Partes de Personaje</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                        <div>
+                            <p class="font-bold text-lg mb-2">Cabeza</p>
+                            <div id="head-part" class="text-7xl mb-4"></div>
+                            <button id="next-head" class="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition">Siguiente</button>
+                        </div>
+                        <div>
+                            <p class="font-bold text-lg mb-2">Cuerpo</p>
+                            <div id="body-part" class="text-7xl mb-4"></div>
+                            <button id="next-body" class="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition">Siguiente</button>
+                        </div>
+                        <div>
+                            <p class="font-bold text-lg mb-2">Piernas</p>
+                            <div id="legs-part" class="text-7xl mb-4"></div>
+                            <button id="next-legs" class="px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition">Siguiente</button>
+                        </div>
+                    </div>
+                    
+                    <div id="mission5-quiz" class="mt-8 pt-4 border-t-2 border-stone-200">
+                        <h3 class="text-2xl font-semibold mb-4 text-stone-700">🤔 Pregunta de Refuerzo</h3>
+                        <p class="mb-4 text-stone-600">¿Qué tipo de información podrías guardar en un arreglo para un juego de diálogos de personajes?</p>
+                        <div class="flex flex-col gap-2">
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition">El color de la pantalla.</button>
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition" data-correct="true">Las frases que dirá un personaje.</button>
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition">El tiempo que ha pasado.</button>
+                        </div>
+                        <p id="mission5-feedback" class="mt-4 h-6 text-lg font-medium text-center"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MISION 6 REVISADA -->
+            <section id="mission6" class="mission-content hidden">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 class="text-3xl font-bold mb-4 text-teal-700">Misión 6: ¡Cuidado con los Errores!</h2>
+                    <p class="mb-4 text-lg text-stone-600">Todo programador se encuentra con "bugs" (errores) en su código. ¡Es normal! Un error común es el de "índice fuera de límites", que ocurre cuando intentas acceder a una posición que no existe. Tu trabajo es usar el índice correcto para rescatar al gatito.</p>
+                    
+                    <h3 class="text-2xl font-semibold mb-4 text-stone-700">🐱 Rescata al Gatito</h3>
+                    <p class="mb-4 text-stone-600">El gatito está en la <strong class="text-amber-600">última</strong> rama. El arreglo de ramas tiene un tamaño de 5. ¿Cuál es el índice correcto para llegar a la última rama? ¡Selecciona un botón!</p>
+                    
+                    <!-- Buttons are now in a separate, non-overlapping div -->
+                    <div id="rescue-challenge" class="flex flex-wrap justify-center gap-4 mb-6 z-10 relative">
+                        <button data-index="1" class="px-6 py-3 bg-teal-500 text-white rounded-lg font-bold hover:bg-teal-600 transition">Índice 1</button>
+                        <button data-index="5" class="px-6 py-3 bg-teal-500 text-white rounded-lg font-bold hover:bg-teal-600 transition">Índice 5</button>
+                        <button data-index="4" class="px-6 py-3 bg-teal-500 text-white rounded-lg font-bold hover:bg-teal-600 transition" data-correct="true">Índice 4</button>
+                    </div>
+
+                    <!-- The image is also in its own div, with a better placeholder -->
+                    <div class="flex justify-center items-center h-64 mt-2">
+                        <img id="tree-scene" src="https://placehold.co/400x300/654321/ffffff?text=Arbol+con+5+ramas" alt="Árbol con ramas" class="rounded-lg shadow-lg">
+                    </div>
+                    
+                    <p id="rescue-feedback" class="mt-4 h-6 text-lg font-medium text-center"></p>
+                    
+                    <div id="mission6-quiz" class="mt-8 pt-4 border-t-2 border-stone-200">
+                        <h3 class="text-2xl font-semibold mb-4 text-stone-700">🤔 Pregunta de Refuerzo</h3>
+                        <p class="mb-4 text-stone-600">¿Por qué un índice "fuera de límites" es un error común?</p>
+                        <div class="flex flex-col gap-2">
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition">Porque los arreglos son muy grandes.</button>
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition" data-correct="true">Porque los índices comienzan en 0 y el programador a veces olvida restar 1.</button>
+                            <button class="quiz-option bg-stone-100 p-3 rounded-lg text-left hover:bg-stone-200 transition">Porque el código es demasiado rápido.</button>
+                        </div>
+                        <p id="mission6-feedback" class="mt-4 h-6 text-lg font-medium text-center"></p>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="conclusion" class="mission-content hidden">
+                <div class="bg-white p-6 rounded-xl shadow-lg text-center">
+                    <h2 class="text-4xl font-bold mb-4 text-teal-700">🎉 ¡Felicidades, Aventurero! 🎉</h2>
+                    <p class="mb-4 text-lg text-stone-600">Has completado tu viaje por el mundo de los arreglos. ¡Mira todo lo que has logrado!</p>
+                    <div class="flex justify-center items-center gap-4 text-xl">
+                        <div class="p-4 bg-stone-100 rounded-lg shadow-inner flex flex-col items-center gap-2">
+                            <span class="text-4xl font-bold text-amber-600" id="final-points">0</span>
+                            <span>Puntos Totales ⭐</span>
+                        </div>
+                        <div class="p-4 bg-stone-100 rounded-lg shadow-inner flex flex-col items-center gap-2">
+                            <span class="text-4xl font-bold text-amber-600" id="final-badges">0</span>
+                            <span>Misiones Completadas 🏆</span>
+                        </div>
+                    </div>
+                    <p class="mt-6 text-xl font-semibold text-stone-700">Ahora sabes que los arreglos son herramientas poderosas para:</p>
+                    <ul class="list-disc list-inside mt-2 text-left w-fit mx-auto text-stone-600">
+                        <li>Organizar información de manera eficiente.</li>
+                        <li>Manejar múltiples elementos con una sola variable.</li>
+                        <li>Crear juegos y proyectos más complejos.</li>
+                    </ul>
+                    <p class="mt-6 text-lg font-medium text-teal-600">¡Usa estas nuevas habilidades para construir cosas increíbles en MakeCode y más allá! El mundo de la programación te espera.</p>
+                </div>
+            </section>
+
+        </main>
+        
+        <!-- Custom Modal for Messages -->
+        <div id="message-modal-overlay" class="modal-overlay">
+            <div id="message-modal-content" class="modal-content">
+                <p id="message-modal-text" class="text-xl font-semibold text-stone-800 mb-4"></p>
+                <button id="message-modal-close" class="px-6 py-2 bg-teal-500 text-white font-bold rounded-lg hover:bg-teal-600 transition">Entendido</button>
+            </div>
+        </div>
+
+        <footer class="bg-stone-800 text-white mt-12 py-6">
+            <div class="container mx-auto px-4 text-center">
+                <p>Aventura de Arreglos © 2025</p>
+                <p class="text-sm text-stone-400 mt-2">Creado como una herramienta educativa interactiva.</p>
+            </div>
+        </footer>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+
+            const gameState = {
+                currentMission: 'mission1',
+                points: 0,
+                missionsCompleted: new Set()
+            };
+
+            const missionNavButtons = document.querySelectorAll('.mission-nav-button');
+            const missionContents = document.querySelectorAll('.mission-content');
+            const pointsDisplay = document.getElementById('points-display');
+            const badgesDisplay = document.getElementById('badges-display');
+            
+            // Custom Modal Elements
+            const messageModalOverlay = document.getElementById('message-modal-overlay');
+            const messageModalText = document.getElementById('message-modal-text');
+            const messageModalCloseBtn = document.getElementById('message-modal-close');
+
+            function showMessage(message) {
+                if (messageModalText && messageModalOverlay) {
+                    messageModalText.textContent = message;
+                    messageModalOverlay.style.display = 'flex';
+                }
+            }
+
+            if (messageModalCloseBtn) {
+                messageModalCloseBtn.addEventListener('click', () => {
+                    if (messageModalOverlay) {
+                        messageModalOverlay.style.display = 'none';
+                    }
+                });
+            }
+
+            function updateGamificationDisplay() {
+                if (pointsDisplay) pointsDisplay.textContent = gameState.points;
+                if (badgesDisplay) badgesDisplay.textContent = gameState.missionsCompleted.size;
+            }
+            
+            function awardPoints(amount, missionId) {
+                if (!gameState.missionsCompleted.has(missionId)) {
+                    gameState.points += amount;
+                    gameState.missionsCompleted.add(missionId);
+                    updateGamificationDisplay();
+                    showMessage(`¡Misión Completada! Ganaste ${amount} puntos y una insignia 🏆`);
+                }
+            }
+
+            function switchMission(missionId) {
+                gameState.currentMission = missionId;
+                missionContents.forEach(content => {
+                    content.classList.add('hidden');
+                });
+                const missionEl = document.getElementById(missionId);
+                if (missionEl) {
+                    missionEl.classList.remove('hidden');
+                }
+
+                missionNavButtons.forEach(btn => {
+                    if (btn.dataset.mission === missionId) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+                
+                // Special initialization for new missions
+                if (missionId === 'mission3') {
+                    renderSandwichVisualizer();
+                } else if (missionId === 'mission4') {
+                    initAssemblyLine();
+                } else if (missionId === 'mission5') {
+                    renderCharacterParts();
+                } else if (missionId === 'mission6') {
+                    resetRescueChallenge();
+                } else if (missionId === 'conclusion') {
+                    const finalPointsEl = document.getElementById('final-points');
+                    const finalBadgesEl = document.getElementById('final-badges');
+                    if (finalPointsEl) finalPointsEl.textContent = gameState.points;
+                    if (finalBadgesEl) finalBadgesEl.textContent = gameState.missionsCompleted.size;
+                }
+            }
+
+            missionNavButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    switchMission(button.dataset.mission);
+                });
+            });
+
+            // --- Generic Quiz Logic ---
+            function setupQuiz(missionId, points) {
+                const quizContainer = document.getElementById(`${missionId}-quiz`);
+                if (!quizContainer) return;
+                const options = quizContainer.querySelectorAll('.quiz-option');
+                const feedbackEl = document.getElementById(`${missionId}-feedback`);
+                
+                if (!feedbackEl) {
+                    console.error(`Feedback element with ID '${missionId}-feedback' not found.`);
+                    return;
+                }
+
+                options.forEach(option => {
+                    option.addEventListener('click', () => {
+                        options.forEach(o => o.disabled = true);
+                        if (option.dataset.correct === 'true') {
+                            feedbackEl.textContent = '¡Respuesta correcta!';
+                            feedbackEl.classList.add('feedback-correct');
+                            option.style.backgroundColor = '#D1FAE5';
+                            awardPoints(points, missionId);
+                        } else {
+                            feedbackEl.textContent = 'Respuesta incorrecta. ¡Intenta de nuevo!';
+                            feedbackEl.classList.add('feedback-incorrect');
+                            option.style.backgroundColor = '#FEE2E2';
+                        }
+                    });
+                });
+            }
+
+            // --- Mission 1: Analogies ---
+            const analogies = [
+                {
+                    title: "Una Fila de Casilleros 🏫",
+                    description: "Imagina una fila de casilleros en la escuela. El arreglo es toda la fila, y cada casillero individual es un elemento donde puedes guardar algo.",
+                    visual: `<div class="flex justify-center gap-2">{LOCKERS}</div>`
+                },
+                {
+                    title: "Un Cartón de Huevos 🥚",
+                    description: "Un cartón de huevos es el arreglo. Cada espacio individual para un huevo es un elemento. ¡Todos los elementos son del mismo tipo (huevos)!",
+                    visual: `<div class="grid grid-cols-6 gap-2 p-4 bg-yellow-100 rounded-lg border-2 border-yellow-300 w-fit mx-auto">{EGGS}</div>`
+                },
+                {
+                    title: "Una Lista de Compras 🛒",
+                    description: "Tu lista de compras es un arreglo de texto (cadenas). Cada artículo en la lista es un elemento del arreglo.",
+                    visual: `<div class="bg-white p-4 rounded-lg shadow-inner w-64 mx-auto border"><h4 class="font-bold border-b pb-2 mb-2">Lista de Compras</h4><ul class="text-left list-disc list-inside">{ITEMS}</ul></div>`
+                }
+            ];
+            let currentAnalogyIndex = 0;
+            const analogyContainer = document.getElementById('analogy-container');
+            const prevAnalogyBtn = document.getElementById('prev-analogy');
+            const nextAnalogyBtn = document.getElementById('next-analogy');
+
+            function renderAnalogy() {
+                if (!analogyContainer) return;
+                const analogy = analogies[currentAnalogyIndex];
+                let visualHtml = analogy.visual;
+                if (analogy.title.includes("Casilleros")) {
+                    let lockersHtml = '';
+                    for(let i = 0; i < 5; i++) {
+                        lockersHtml += `<div class="w-16 h-24 bg-stone-400 rounded-md flex items-center justify-center text-white font-bold text-2xl">${i}</div>`;
+                    }
+                    visualHtml = visualHtml.replace('{LOCKERS}', lockersHtml);
+                } else if (analogy.title.includes("Huevos")) {
+                    let eggsHtml = '';
+                    for(let i = 0; i < 12; i++) {
+                        eggsHtml += `<div class="w-12 h-12 bg-white rounded-full border-2 border-stone-300 flex items-center justify-center">🥚</div>`;
+                    }
+                    visualHtml = visualHtml.replace('{EGGS}', eggsHtml);
+                } else if (analogy.title.includes("Compras")) {
+                    const items = ["Leche", "Pan", "Manzanas", "Jugo"];
+                    visualHtml = visualHtml.replace('{ITEMS}', items.map(item => `<li class="ml-4">${item}</li>`).join(''));
+                }
+
+                analogyContainer.innerHTML = `
+                    <h4 class="text-xl font-semibold mb-2 text-center">${analogy.title}</h4>
+                    <div class="mb-4 text-center">${visualHtml}</div>
+                    <p class="text-stone-600 text-center">${analogy.description}</p>
+                `;
+            }
+            
+            if (prevAnalogyBtn) {
+                prevAnalogyBtn.addEventListener('click', () => {
+                    currentAnalogyIndex = (currentAnalogyIndex - 1 + analogies.length) % analogies.length;
+                    renderAnalogy();
+                });
+            }
+            if (nextAnalogyBtn) {
+                nextAnalogyBtn.addEventListener('click', () => {
+                    currentAnalogyIndex = (currentAnalogyIndex + 1) % analogies.length;
+                    renderAnalogy();
+                });
+            }
+
+            // --- Mission 2: Locker Challenge ---
+            const lockerContainer = document.getElementById('locker-container');
+            const targetIndexSpan = document.getElementById('target-index');
+            const lockerFeedback = document.getElementById('locker-feedback');
+            let targetIndex;
+
+            function setupLockerChallenge() {
+                if (!lockerContainer || !targetIndexSpan) return;
+                lockerContainer.innerHTML = '';
+                if (lockerFeedback) {
+                    lockerFeedback.textContent = '';
+                    lockerFeedback.className = 'h-6 text-lg font-medium text-center';
+                }
+                targetIndex = Math.floor(Math.random() * 5);
+                targetIndexSpan.textContent = targetIndex;
+
+                for (let i = 0; i < 5; i++) {
+                    const locker = document.createElement('div');
+                    locker.className = 'w-20 h-28 bg-teal-500 rounded-lg flex flex-col items-center justify-center text-white font-bold cursor-pointer hover:bg-teal-600 transition duration-150 ease-in-out';
+                    locker.dataset.index = i;
+                    locker.innerHTML = `<span class="text-3xl">📦</span><span class="text-xs">Índice: ${i}</span>`;
+                    locker.addEventListener('click', handleLockerClick);
+                    lockerContainer.appendChild(locker);
+                }
+            }
+
+            function handleLockerClick(event) {
+                if (!lockerFeedback) return;
+                const clickedIndex = parseInt(event.currentTarget.dataset.index);
+                if (clickedIndex === targetIndex) {
+                    lockerFeedback.textContent = '¡Correcto! ¡Excelente trabajo!';
+                    lockerFeedback.classList.add('feedback-correct');
+                    event.currentTarget.style.backgroundColor = '#10B981';
+                    event.currentTarget.classList.add('animate-pulse');
+                    awardPoints(10, 'mission2');
+                    setTimeout(() => {
+                        if (event.currentTarget) {
+                            event.currentTarget.classList.remove('animate-pulse');
+                        }
+                    }, 1000);
+                } else {
+                    lockerFeedback.textContent = '¡Casi! Recuerda, los índices empiezan en 0.';
+                    lockerFeedback.classList.add('feedback-incorrect');
+                }
+            }
+
+            // --- Mission 3: Sandwich Operations ---
+            const sandwichVisualizer = document.getElementById('sandwich-visualizer');
+            const sandwichFeedback = document.getElementById('sandwich-feedback');
+            const addIngredientBtn = document.getElementById('add-ingredient');
+            const removeIngredientBtn = document.getElementById('remove-ingredient');
+            const changeIngredientBtn = document.getElementById('change-ingredient');
+            let sandwichIngredients = ['pan', 'queso', 'jamón', 'pan'];
+            const availableIngredients = ['lechuga', 'tomate', 'pavo', 'mayonesa'];
+
+            function renderSandwichVisualizer() {
+                if (!sandwichVisualizer) return;
+                sandwichVisualizer.innerHTML = '';
+                sandwichIngredients.forEach((ingredient, index) => {
+                    const ingredientEl = document.createElement('div');
+                    ingredientEl.className = 'px-4 py-2 bg-white rounded-lg shadow font-semibold text-stone-700 border-2 border-stone-200 transition duration-150 ease-in-out';
+                    ingredientEl.innerHTML = `<span>${ingredient}</span><span class="text-xs text-stone-500 block">(${index})</span>`;
+                    sandwichVisualizer.appendChild(ingredientEl);
+                });
+            }
+
+            if (addIngredientBtn) {
+                addIngredientBtn.addEventListener('click', () => {
+                    const newIngredient = availableIngredients[Math.floor(Math.random() * availableIngredients.length)];
+                    sandwichIngredients.push(newIngredient);
+                    renderSandwichVisualizer();
+                    if (sandwichFeedback) sandwichFeedback.textContent = `Se añadió "${newIngredient}" al final de la lista.`;
+                    awardPoints(5, 'mission3');
+                });
+            }
+
+            if (removeIngredientBtn) {
+                removeIngredientBtn.addEventListener('click', () => {
+                    if (sandwichIngredients.length > 0) {
+                        const removed = sandwichIngredients.pop();
+                        renderSandwichVisualizer();
+                        if (sandwichFeedback) sandwichFeedback.textContent = `Se quitó el último ingrediente: "${removed}".`;
+                        awardPoints(5, 'mission3');
+                    } else {
+                        if (sandwichFeedback) sandwichFeedback.textContent = '¡No hay ingredientes para quitar!';
+                    }
+                });
+            }
+
+            if (changeIngredientBtn) {
+                changeIngredientBtn.addEventListener('click', () => {
+                    if (sandwichIngredients.length > 1) {
+                        const oldIngredient = sandwichIngredients[1];
+                        const newIngredient = 'mostaza';
+                        sandwichIngredients[1] = newIngredient;
+                        renderSandwichVisualizer();
+                        if (sandwichFeedback) sandwichFeedback.textContent = `Se cambió "${oldIngredient}" por "${newIngredient}" en el índice 1.`;
+                        awardPoints(5, 'mission3');
+                    } else {
+                        if (sandwichFeedback) sandwichFeedback.textContent = 'Necesitas al menos 2 ingredientes para cambiar el del índice 1.';
+                    }
+                });
+            }
+            
+            // --- Mission 4: Loop Assembly Line ---
+            let assemblyLineLoopInterval;
+            const loopStatus = document.getElementById('loop-status');
+            const runLoopBtn = document.getElementById('run-loop-btn');
+            const carSprite = document.getElementById('car-sprite');
+            const stations = ['chasis', 'motor', 'pintura', 'ruedas', 'listo'];
+            let currentStationIndex = 0;
+
+            function initAssemblyLine() {
+                if (carSprite) carSprite.className = 'car-sprite station-0';
+                if (loopStatus) loopStatus.textContent = '';
+                if (runLoopBtn) runLoopBtn.disabled = false;
+                currentStationIndex = 0;
+            }
+
+            if (runLoopBtn) {
+                runLoopBtn.addEventListener('click', () => {
+                    if (!loopStatus || !carSprite) return;
+                    runLoopBtn.disabled = true;
+                    
+                    assemblyLineLoopInterval = setInterval(() => {
+                        if (currentStationIndex < stations.length) {
+                            carSprite.classList.remove(`station-${currentStationIndex}`);
+                            currentStationIndex++;
+                            carSprite.classList.add(`station-${currentStationIndex}`);
+                            loopStatus.textContent = `Procesando estación ${currentStationIndex}: ${stations[currentStationIndex - 1]}`;
+                        } else {
+                            clearInterval(assemblyLineLoopInterval);
+                            loopStatus.textContent = '¡Coche completado! Bucle terminado.';
+                            runLoopBtn.disabled = false;
+                            awardPoints(20, 'mission4');
+                        }
+                    }, 1000);
+                });
+            }
+            
+            // --- Mission 5: Character Creator ---
+            const headParts = ['🤠', '👷', '🤖', '🧑‍🚀'];
+            const bodyParts = ['👕', '🦺', '🥋', '🩳'];
+            const legsParts = ['👖', '🩱', '🩲', '🩳'];
+            let currentHeadIndex = 0;
+            let currentBodyIndex = 0;
+            let currentLegsIndex = 0;
+
+            const headPartEl = document.getElementById('head-part');
+            const bodyPartEl = document.getElementById('body-part');
+            const legsPartEl = document.getElementById('legs-part');
+
+            function renderCharacterParts() {
+                if (headPartEl) headPartEl.textContent = headParts[currentHeadIndex];
+                if (bodyPartEl) bodyPartEl.textContent = bodyParts[currentBodyIndex];
+                if (legsPartEl) legsPartEl.textContent = legsParts[currentLegsIndex];
+            }
+
+            if (document.getElementById('next-head')) {
+                document.getElementById('next-head').addEventListener('click', () => {
+                    currentHeadIndex = (currentHeadIndex + 1) % headParts.length;
+                    renderCharacterParts();
+                    awardPoints(1, 'mission5');
+                });
+            }
+            if (document.getElementById('next-body')) {
+                document.getElementById('next-body').addEventListener('click', () => {
+                    currentBodyIndex = (currentBodyIndex + 1) % bodyParts.length;
+                    renderCharacterParts();
+                    awardPoints(1, 'mission5');
+                });
+            }
+            if (document.getElementById('next-legs')) {
+                document.getElementById('next-legs').addEventListener('click', () => {
+                    currentLegsIndex = (currentLegsIndex + 1) % legsParts.length;
+                    renderCharacterParts();
+                    awardPoints(1, 'mission5');
+                });
+            }
+
+            // --- Mission 6: Rescue the Kitty ---
+            const rescueChallenge = document.getElementById('rescue-challenge');
+            const rescueFeedback = document.getElementById('rescue-feedback');
+            const treeScene = document.getElementById('tree-scene');
+
+            function resetRescueChallenge() {
+                if (rescueFeedback) rescueFeedback.textContent = '';
+                if (treeScene) treeScene.src = "https://placehold.co/400x300/654321/ffffff?text=Arbol+con+5+ramas";
+                if (rescueChallenge) {
+                    rescueChallenge.querySelectorAll('button').forEach(btn => btn.disabled = false);
+                }
+            }
+
+            if (rescueChallenge) {
+                rescueChallenge.addEventListener('click', (event) => {
+                    const target = event.target.closest('button');
+                    if (!target) return;
+                    
+                    const selectedIndex = parseInt(target.dataset.index);
+                    const isCorrect = target.dataset.correct === 'true';
+
+                    if (isCorrect) {
+                        if (rescueFeedback) {
+                            rescueFeedback.textContent = `¡Felicidades! El índice correcto para el último elemento es el 4. ¡Has rescatado al gatito! 🐱`;
+                            rescueFeedback.className = 'mt-4 h-6 text-lg font-medium feedback-correct';
+                        }
+                        if (treeScene) treeScene.src = "https://placehold.co/400x300/10B981/ffffff?text=¡Gatito+Rescatado!+🐱";
+                        awardPoints(20, 'mission6');
+                        rescueChallenge.querySelectorAll('button').forEach(btn => btn.disabled = true);
+                    } else {
+                        if (rescueFeedback) {
+                            rescueFeedback.textContent = `¡Oh no! El índice ${selectedIndex} no funciona. ¡Inténtalo de nuevo! (Pista: el último índice es el tamaño del arreglo menos uno).`;
+                            rescueFeedback.className = 'mt-4 h-6 text-lg font-medium feedback-incorrect';
+                        }
+                    }
+                });
+            }
+
+            // --- Initial Setup ---
+            function initializeApp() {
+                switchMission('mission1');
+                renderAnalogy();
+                setupLockerChallenge();
+                renderSandwichVisualizer(); // New
+                renderCharacterParts(); // New
+                updateGamificationDisplay();
+                setupQuiz('mission1', 5);
+                setupQuiz('mission2', 5);
+                setupQuiz('mission3', 5);
+                setupQuiz('mission4', 5);
+                setupQuiz('mission5', 5);
+                setupQuiz('mission6', 5);
+            }
+
+            initializeApp();
+        });
+    </script>
+</body>
+</html>
